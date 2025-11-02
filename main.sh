@@ -2,25 +2,47 @@
 #!/bin/bash
 
 source ./service/lotto_service.sh
+source ./service/opt_service.sh
 
-main() {
+find() {
+    local json="$1"
+    shift
+    local numbers=("$@")
 
-    local json
-    json=$(fetch_latest_lotto)
-    local exit_code=$?
+    if [ ${#numbers[@]} -eq 0 ]; then
+        echo "⚠️  กรุณาใส่หมายเลขหลัง -f เช่น:"
+        echo "   ./main.sh -f 123456 789001"
+        return 1
+    fi
 
-    if [ $exit_code -eq 0 ]; then
     show_date "$json"
 
     for number in "${numbers[@]}"; do
         find_number "$json" "$number"
     done
+}
 
-    else
-        echo "⚠️  Cannot get lotto data. Exiting." >&2
+main() {
+    mapopt "$@"
+    
+    local json=$(fetch_latest_lotto)
+    local exit_code=$?
+    sleep 1
+    clear
+
+    if [ $exit_code -ne 0 ]; then
+        echo "⚠️  Cannot get lotto data." >&2
         exit 1
+    fi
+
+    if [ "$FLAG_FIND" = true ]; then
+        shift
+        find "$json" "$@"
+    elif [ "$FLAG_SUMMARY" = true ]; then
+        show_summary "$json"
+    else 
+        echo "😐 WTF"
     fi
 }
 
-numbers=("$@")
-main "${numbers[@]}"
+main "$@"

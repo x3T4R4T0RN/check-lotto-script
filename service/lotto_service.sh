@@ -2,30 +2,48 @@
 source ./repository/lotto_api_repository.sh
 
 # -------------------------------
-# Function: parse_lotto_summary
+# Function: lotto_summary
 # -------------------------------
 # - Parse key info from lotto JSON
 # - Args: JSON string
 # - Output: formatted summary
 # -------------------------------
-lotto_summary() {
+show_summary() {
     local json="$1"
 
     local date
     date=$(echo "$json" | jq -r '.response.date')
 
     local first_prize
-    first_prize=$(echo "$json" | jq -r '.response.prizes[] | select(.id=="prizeFirst") | .number[0]')
+    first_prize=$(echo "$json" | jq -r '.response.prizes[] | select(.id=="prizeFirst") | .number | join(" ")')
 
     local last_two
-    last_two=$(echo "$json" | jq -r '.response.runningNumbers[] | select(.id=="runningNumberBackTwo") | .number[0]')
+    last_two=$(echo "$json" | jq -r '.response.runningNumbers[] | select(.id=="runningNumberBackTwo") | .number | join(" ")')
 
-    printf "\n🎯 Lotto Summary\n"
-    printf "#####################################\n"
+    local first_three
+    first_three=$(echo "$json" | jq -r '.response.runningNumbers[] | select(.id=="runningNumberFrontThree") | .number | join(" ")')
+
+    local last_three
+    last_three=$(echo "$json" | jq -r '.response.runningNumbers[] | select(.id=="runningNumberBackThree") | .number | join(" ")')
+
+    sleep 0.5
+    printf "\n===================================="
+    sleep 0.5
+    printf "\n=======   🎯 Lotto Summary   =======\n"
+    sleep 0.5
+    printf "====================================\n"
+    sleep 0.5
     printf "📅 งวดวันที่       : %s\n" "$date"
+    sleep 0.5
     printf "🏆 รางวัลที่ 1     : %s\n" "$first_prize"
-    printf "💰 เลขท้าย 2 ตัว   : %s\n" "$last_two"
-    printf "#####################################\n\n"
+    sleep 0.5
+    printf "💰 เลขหน้า 3 ตัว  : %s\n" "$first_three"
+    sleep 0.5
+    printf "💰 เลขท้าย 3 ตัว  : %s\n" "$last_three"
+    sleep 0.5
+    printf "💵 เลขท้าย 2 ตัว  : %s\n" "$last_two"
+    sleep 0.5
+    printf "====================================\n\n"
 }
 
 # -------------------------------
@@ -49,7 +67,6 @@ find_number() {
         .response.runningNumbers[] | select(.number[]? == $num) | .name
     ')
     number_text="🔎 สลากหมายเลข: $search_number "
-    # printf "🔎 สลากหมายเลข: %s\n" "$search_number"
     if [[ -n "$prize_name" || -n "$running_name" ]]; then
         [[ -n "$prize_name" ]] && echo "$number_text 🏆 ถูกรางวัล: $prize_name"
         [[ -n "$running_name" ]] && echo "$number_text 💰 ถูกรางวัล: $running_name"
