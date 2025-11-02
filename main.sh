@@ -16,10 +16,13 @@ find() {
     fi
 
     show_date "$json"
+    sleep 0.5
 
     for number in "${numbers[@]}"; do
         find_number "$json" "$number"
+        sleep 0.5
     done
+    echo "------------------------------------"
 }
 
 main() {

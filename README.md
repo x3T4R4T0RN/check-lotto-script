@@ -9,15 +9,15 @@ A shell script utility for checking Thailand lottery numbers - perfect for lazy 
 ### Usage
 #### Get summary
 ```bash
-$ ./main -s 
+$ ./main.sh -s 
 ```
 #### Find prize
 ```bash
-$ ./main -f <numbers ...> 
+$ ./main.sh -f <numbers ...> 
 ```
 #### Quick Help
 ```bash
-$ ./main -h
+$ ./main.sh -h
 ```
 ---
 ### Features
