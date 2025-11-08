@@ -1,8 +1,5 @@
 #!/bin/bash
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/../repository/lotto_file_repository.sh"
-
 get_cache_latest_lotto() {
 	local fp="${CACHE_DIRECTORY}/${CACHE_LATEST_FILENAME}"
 
@@ -12,10 +9,9 @@ get_cache_latest_lotto() {
 	fi
 
 	local raw=$(<"$fp")
-
-	local data=$(echo "$raw" | jq -r)
-
-	local timestamp=$(echo "$raw" | jq -r '.timestamp // empty')
+	local decoded=$(base64_decode "$raw")
+	local data=$(echo "$decoded" | jq -r)
+	local timestamp=$(echo "$decoded" | jq -r '.timestamp // empty')
 
 	if [ ! -n "$timestamp" ]; then
 		warn "Could not find any caching time."
@@ -30,7 +26,7 @@ get_cache_latest_lotto() {
 		return 1
 	fi
 
-	local json=$(echo "$raw" | jq -r '.result // empty')
+	local json=$(echo "$decoded" | jq -r '.result // empty')
 	echo "$json"
 }
 
@@ -44,5 +40,6 @@ set_cache_latest_lotto() {
 			'{timestamp: $time, result: $data}'
 	)
 	local plain_string=$(echo "$wrapped_json" | jq -c .)
-	write_to_file "$plain_string" "${CACHE_DIRECTORY}" "${CACHE_LATEST_FILENAME}"
+	local encoded=$(base64_encode "$plain_string")
+	write_to_file "$encoded" "${CACHE_DIRECTORY}" "${CACHE_LATEST_FILENAME}"
 }

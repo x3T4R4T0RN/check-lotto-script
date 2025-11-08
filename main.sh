@@ -4,9 +4,11 @@ set -a
 source "$(dirname "$0")/.env"
 set +a
 
+source ./repository/lotto_file_repository.sh
 source ./service/lotto_service.sh
 source ./service/opt_service.sh
 source ./service/cache_service.sh
+source ./service/base64_encoder_service.sh
 source ./utility/logging.sh
 
 find() {
@@ -32,10 +34,11 @@ find() {
 
 main() {
 	mapopt "$@"
-
 	local json
 	json=$(get_cache_latest_lotto)
 	if [ -z "$json" ] || [ "$json" = "null" ]; then
+		sleep 0.5
+		clear
 		json=$(fetch_latest_lotto)
 		set_cache_latest_lotto "$json"
 		sleep 1

@@ -10,11 +10,11 @@
 # - Output: JSON response
 # -------------------------------
 fetch_latest_lotto() {
-	echo "🌀 Starting fetch latest lottery result...\n" >&2
-	local url="${LOTO_API_URL}${LATEST_PATH}"
+	log "🌀 Starting fetch latest lottery result..."
+	local lttbse=$(base64_decode $LOTO_API_URL)
+	local lttlst=$(base64_decode $LATEST_PATH)
 
-	local response
-	response=$(curl -s "$url")
+	local response=$(curl -s "${lttbse}${lttlst}")
 
 	local status
 	status=$(echo "$response" | jq -r '.status' 2>/dev/null)
