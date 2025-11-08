@@ -8,8 +8,9 @@ source ./repository/lotto_file_repository.sh
 source ./service/lotto_service.sh
 source ./service/opt_service.sh
 source ./service/cache_service.sh
-source ./service/base64_encoder_service.sh
 source ./utility/logging.sh
+source ./utility/base64_encoder.sh
+source ./utility/aes_encryption.sh
 
 find() {
 	local json="$1"

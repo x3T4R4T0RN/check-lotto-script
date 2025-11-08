@@ -10,8 +10,11 @@ get_cache_latest_lotto() {
 
 	local raw=$(<"$fp")
 	local decoded=$(base64_decode "$raw")
-	local data=$(echo "$decoded" | jq -r)
-	local timestamp=$(echo "$decoded" | jq -r '.timestamp // empty')
+
+	local key=$(base64_decode "$CACHE_KEY")
+	local decrypted=$(aes_decrypt "$decoded" "$key")
+	local data=$(echo "$decrypted" | jq -r)
+	local timestamp=$(echo "$decrypted" | jq -r '.timestamp // empty')
 
 	if [ ! -n "$timestamp" ]; then
 		warn "Could not find any caching time."
@@ -26,7 +29,7 @@ get_cache_latest_lotto() {
 		return 1
 	fi
 
-	local json=$(echo "$decoded" | jq -r '.result // empty')
+	local json=$(echo "$decrypted" | jq -r '.result // empty')
 	echo "$json"
 }
 
@@ -39,7 +42,9 @@ set_cache_latest_lotto() {
 			--argjson data "$data" \
 			'{timestamp: $time, result: $data}'
 	)
-	local plain_string=$(echo "$wrapped_json" | jq -c .)
-	local encoded=$(base64_encode "$plain_string")
+	local pstr=$(echo "$wrapped_json" | jq -c .)
+	local key=$(base64_decode "$CACHE_KEY")
+	local encyt=$(aes_encrypted "$pstr" "$key")
+	local encoded=$(base64_encode "$encyt")
 	write_to_file "$encoded" "${CACHE_DIRECTORY}" "${CACHE_LATEST_FILENAME}"
 }
