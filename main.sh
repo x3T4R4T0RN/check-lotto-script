@@ -6,6 +6,7 @@ set +a
 
 source ./repository/lotto_file_repository.sh
 source ./service/lotto_service.sh
+source ./service/lotto_validator_service.sh
 source ./service/opt_service.sh
 source ./service/cache_service.sh
 source ./utility/logging.sh
@@ -27,8 +28,12 @@ find() {
 	sleep 0.5
 
 	for number in "${numbers[@]}"; do
-		find_number "$json" "$number"
-		sleep 0.5
+		if validate_lottery_format "$number"; then
+			find_number "$json" "$number"
+			sleep 0.5
+		else
+        	echo "[$number] ❌ เลขไม่ถูกต้อง"
+		fi
 	done
 	echo "------------------------------------"
 }
@@ -47,12 +52,12 @@ main() {
 	fi
 
 	if [ "$FLAG_FIND" = true ]; then
-	    shift
-	    find "$json" "$@"
+		shift
+		find "$json" "$@"
 	elif [ "$FLAG_SUMMARY" = true ]; then
-	    show_summary "$json"
+		show_summary "$json"
 	else
-	    echo "😐 WTF"
+		echo "😐 WTF"
 	fi
 }
 
