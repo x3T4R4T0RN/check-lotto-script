@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# BASE_URL="https://lotto.api.rayriffy.com/"
-# LATEST_PATH="latest"
+# LATEST_URL="https://thai-lottery-api-two.vercel.app/api/lotto"
 
 # -------------------------------
 # Function: fetch_latest_lotto
@@ -11,17 +10,31 @@
 # -------------------------------
 fetch_latest_lotto() {
 	log "🌀 Starting fetch latest lottery result..."
-	local lttbse=$(base64_decode $LOTO_API_URL)
-	local lttlst=$(base64_decode $LATEST_PATH)
+	local url="https://thai-lottery-api-two.vercel.app/api/lotto"
 
-	local response=$(curl -s "${lttbse}${lttlst}")
+	local response
+	if ! response=$(curl -fsSL --connect-timeout 10 --max-time 30 "$url" 2>/dev/null); then
+		fail "Failed to fetch latest lotto data from API."
+		return 1
+	fi
+
+	local normalized
+	normalized=$(echo "$response" | jq -c '
+		if .status == "success" and (.response | type) == "object" then
+			.
+		elif .status == "success" and (.data | type) == "object" then
+			{status: .status, response: .data}
+		else
+			.
+		end
+	' 2>/dev/null)
 
 	local status
-	status=$(echo "$response" | jq -r '.status' 2>/dev/null)
+	status=$(echo "$normalized" | jq -r '.status // empty' 2>/dev/null)
 
 	if [ "$status" == "success" ]; then
 		success "Fetch latest lotto data success"
-		echo "$response"
+		echo "$normalized"
 		return 0
 	else
 		fail "Failed to fetch latest lotto data."

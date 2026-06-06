@@ -9,11 +9,24 @@ get_cache_latest_lotto() {
 	fi
 
 	local raw=$(<"$fp")
-	local decoded=$(base64_decode "$raw")
+	local decoded
+	if ! decoded=$(base64_decode "$raw" 2>/dev/null); then
+		warn "Cache data is invalid."
+		return 1
+	fi
 
 	local key=$(base64_decode "$CACHE_KEY")
-	local decrypted=$(aes_decrypt "$decoded" "$key")
-	local data=$(echo "$decrypted" | jq -r)
+	local decrypted
+	if ! decrypted=$(aes_decrypt "$decoded" "$key" 2>/dev/null); then
+		warn "Cache data is invalid."
+		return 1
+	fi
+
+	if ! echo "$decrypted" | jq -e . >/dev/null 2>&1; then
+		warn "Cache data is invalid."
+		return 1
+	fi
+
 	local timestamp=$(echo "$decrypted" | jq -r '.timestamp // empty')
 
 	if [ ! -n "$timestamp" ]; then

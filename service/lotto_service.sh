@@ -1,90 +1,84 @@
 #!/bin/bash
-source ./repository/lotto_api_repository.sh
 
-# -------------------------------
-# Function: lotto_summary
-# -------------------------------
-# - Parse key info from lotto JSON
-# - Args: JSON string
-# - Output: formatted summary
-# -------------------------------
-show_summary() {
-    local json="$1"
-
-    local date
-    date=$(echo "$json" | jq -r '.response.date')
-
-    local first_prize
-    first_prize=$(echo "$json" | jq -r '.response.prizes[] | select(.id=="prizeFirst") | .number | join(" ")')
-
-    local last_two
-    last_two=$(echo "$json" | jq -r '.response.runningNumbers[] | select(.id=="runningNumberBackTwo") | .number | join(" ")')
-
-    local first_three
-    first_three=$(echo "$json" | jq -r '.response.runningNumbers[] | select(.id=="runningNumberFrontThree") | .number | join(" ")')
-
-    local last_three
-    last_three=$(echo "$json" | jq -r '.response.runningNumbers[] | select(.id=="runningNumberBackThree") | .number | join(" ")')
-
-    sleep 0.5
-    printf "\n===================================="
-    sleep 0.5
-    printf "\n=======   🎯 Lotto Summary   =======\n"
-    sleep 0.5
-    printf "====================================\n"
-    sleep 0.5
-    printf "📅 งวดวันที่       : %s\n" "$date"
-    sleep 0.5
-    printf "🏆 รางวัลที่ 1     : %s\n" "$first_prize"
-    sleep 0.5
-    printf "💰 เลขหน้า 3 ตัว  : %s\n" "$first_three"
-    sleep 0.5
-    printf "💰 เลขท้าย 3 ตัว  : %s\n" "$last_three"
-    sleep 0.5
-    printf "💵 เลขท้าย 2 ตัว  : %s\n" "$last_two"
-    sleep 0.5
-    printf "====================================\n\n"
+is_valid_lotto_json() {
+	local json="$1"
+	[ -n "$json" ] && echo "$json" | jq -e '.status == "success" and (.response | type == "object")' >/dev/null 2>&1
 }
 
-# -------------------------------
-# Function: find_number
-# -------------------------------
-# - Args: 1. JSON string
-#         2. Number of lotto
-# - Output: Prize
-# -------------------------------
-find_number() {
-    local json="$1"
-    local search_number="$2"
+get_lotto_summary_fields() {
+	local json="$1"
 
-    local prize_name
-    prize_name=$(echo "$json" | jq -r --arg num "$search_number" '
-        .response.prizes[] | select(.number[]? == $num) | .name
-    ')
+	echo "$json" | jq -r '
+		def numbers_text: if type == "array" then join(" ") else . // "" end;
 
-    local running_name
-    running_name=$(echo "$json" | jq -r --arg num "$search_number" '
-        .response.runningNumbers[] | select(.number[]? == $num) | .name
-    ')
-    number_text="🔎 สลากหมายเลข: $search_number "
-    if [[ -n "$prize_name" || -n "$running_name" ]]; then
-        [[ -n "$prize_name" ]] && echo "$number_text 🏆 ถูกรางวัล: $prize_name"
-        [[ -n "$running_name" ]] && echo "$number_text 💰 ถูกรางวัล: $running_name"
-    else 
-        echo "$number_text ❌ คุณไม่ถูกรางวัล"
-    fi
+		[
+			.response.date,
+			(.response.prizes[]? | select(.id == "prizeFirst") | .number | numbers_text),
+			(.response.runningNumbers[]? | select(.id == "runningNumberFrontThree") | .number | numbers_text),
+			(.response.runningNumbers[]? | select(.id == "runningNumberBackThree") | .number | numbers_text),
+			(.response.runningNumbers[]? | select(.id == "runningNumberBackTwo") | .number | numbers_text)
+		] | @tsv
+	'
 }
 
-# -------------------------------
-# Function: show_date
-# -------------------------------
-# - Args: JSON string
-# - Output: Date of lotto
-# -------------------------------
-show_date() {
-    local json="$1"
-    date=$(echo "$json" | jq -r '.response.date')
-    echo "------------------------------------"
-    echo "📅 งวดวันที่: $date"
-    echo "------------------------------------"
+get_lotto_prize_matches() {
+	local json="$1"
+	local search_number="$2"
+	local search_length=${#search_number}
+	local first_three=""
+	local last_three=""
+	local last_two=""
+
+	[ "$search_length" -ge 3 ] && first_three="${search_number:0:3}"
+	[ "$search_length" -ge 3 ] && last_three="${search_number:$((search_length - 3)):3}"
+	[ "$search_length" -ge 2 ] && last_two="${search_number:$((search_length - 2)):2}"
+
+	echo "$json" | jq -r \
+		--arg num "$search_number" \
+		--arg len "$search_length" \
+		--arg first_three "$first_three" \
+		--arg last_three "$last_three" \
+		--arg last_two "$last_two" '
+		def numbers: if (.number | type) == "array" then .number[]? else .number // empty end;
+		def reward_value: (.reward // "0" | tonumber? // 0);
+
+		([
+			.response.prizes[]? as $prize
+			| ($prize | numbers) as $number
+			| select($number == $num)
+			| {
+				icon: "🏆",
+				name: $prize.name,
+				number: $number,
+				reward: ($prize.reward // "0"),
+				rewardValue: ($prize | reward_value)
+			}
+		] + [
+			.response.runningNumbers[]? as $running
+			| ($running | numbers) as $number
+			| select(
+				($len == "6" and (
+					($running.id == "runningNumberFrontThree" and $number == $first_three) or
+					($running.id == "runningNumberBackThree" and $number == $last_three) or
+					($running.id == "runningNumberBackTwo" and $number == $last_two)
+				)) or
+				($len != "6" and $number == $num)
+			)
+			| {
+				icon: "💰",
+				name: $running.name,
+				number: $number,
+				reward: ($running.reward // "0"),
+				rewardValue: ($running | reward_value)
+			}
+		])
+		| sort_by(-.rewardValue)
+		| .[]
+		| [.icon, .name, .number, .reward] | @tsv
+	'
+}
+
+get_lotto_date() {
+	local json="$1"
+	echo "$json" | jq -r '.response.date // empty'
 }

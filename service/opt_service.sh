@@ -10,7 +10,7 @@ FLAG_FIND=false
 # - Output: Feature flag
 # -------------------------------
 mapopt() {
-  while getopts "f:sh" opt; do
+  while getopts "fsh" opt; do
     case $opt in
       f)
         FLAG_SUMMARY=false

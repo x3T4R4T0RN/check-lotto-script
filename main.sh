@@ -4,60 +4,33 @@ set -a
 source "$(dirname "$0")/.env"
 set +a
 
-source ./repository/lotto_file_repository.sh
-source ./service/lotto_service.sh
-source ./service/lotto_validator_service.sh
-source ./service/opt_service.sh
-source ./service/cache_service.sh
 source ./utility/logging.sh
 source ./utility/base64_encoder.sh
 source ./utility/aes_encryption.sh
-
-find() {
-	local json="$1"
-	shift
-	local numbers=("$@")
-
-	if [ ${#numbers[@]} -eq 0 ]; then
-		echo "⚠️  กรุณาใส่หมายเลขหลัง -f เช่น:"
-		echo "   ./main.sh -f 123456 789001"
-		return 1
-	fi
-
-	show_date "$json"
-	sleep 0.5
-
-	for number in "${numbers[@]}"; do
-		if validate_lottery_format "$number"; then
-			find_number "$json" "$number"
-			sleep 0.5
-		else
-        	echo "[$number] ❌ เลขไม่ถูกต้อง"
-		fi
-	done
-	echo "------------------------------------"
-}
+source ./repository/lotto_file_repository.sh
+source ./repository/lotto_api_repository.sh
+source ./service/cache_service.sh
+source ./service/lotto_service.sh
+source ./service/lotto_presenter_service.sh
+source ./service/lotto_validator_service.sh
+source ./service/lotto_application_service.sh
+source ./service/opt_service.sh
 
 main() {
 	mapopt "$@"
 	local json
-	json=$(get_cache_latest_lotto)
-	if [ -z "$json" ] || [ "$json" = "null" ]; then
-		sleep 0.5
-		clear
-		json=$(fetch_latest_lotto)
-		set_cache_latest_lotto "$json"
-		sleep 1
-		clear
+
+	if ! json=$(load_latest_lotto_data); then
+		return 1
 	fi
 
 	if [ "$FLAG_FIND" = true ]; then
 		shift
-		find "$json" "$@"
+		check_lottery_numbers "$json" "$@"
 	elif [ "$FLAG_SUMMARY" = true ]; then
 		show_summary "$json"
 	else
-		echo "😐 WTF"
+		show_unknown_operation
 	fi
 }
 
