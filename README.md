@@ -19,6 +19,10 @@ $ ./main.sh -f <numbers ...>
 ```bash
 $ ./main.sh -h
 ```
+#### Run Tests
+```bash
+$ bash tests/unit_lotto_service_test.sh
+```
 ---
 ### Features
 - Quick lottery number verification
